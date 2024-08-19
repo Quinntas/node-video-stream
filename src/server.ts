@@ -1,10 +1,10 @@
 import {createServer, IncomingMessage} from 'node:http';
 import {ServerResponse} from "http";
-import * as fs from "node:fs";
+import {createReadStream, readFileSync, statSync} from "node:fs";
 
 function render(req: IncomingMessage, res: ServerResponse) {
     res.writeHead(200, {'Content-Type': 'text/html'});
-    res.end(fs.readFileSync(__dirname + '/index.html'));
+    res.end(readFileSync(__dirname + '/index.html'));
     return res
 }
 
@@ -13,7 +13,7 @@ function video(req: IncomingMessage, res: ServerResponse) {
     if (!range)
         return jsonResponse(res, 400, {error: 'Range header is required'});
     const videoPath = __dirname + '/video.mp4';
-    const videoSize = fs.statSync(videoPath).size;
+    const videoSize = statSync(videoPath).size;
     const CHUNK_SIZE = 10 ** 6;
     const start = Number(range.replace(/\D/g, ''));
     const end = Math.min(start + CHUNK_SIZE, videoSize - 1);
@@ -25,7 +25,7 @@ function video(req: IncomingMessage, res: ServerResponse) {
         'Content-Type': 'video/mp4',
     };
     res.writeHead(206, headers);
-    const videoStream = fs.createReadStream(videoPath, {
+    const videoStream = createReadStream(videoPath, {
         start, end, highWaterMark: CHUNK_SIZE + 1, autoClose: true,
     });
     videoStream.pipe(res);
