@@ -12,7 +12,7 @@ function render(req: IncomingMessage, res: ServerResponse) {
 
 function video(req: IncomingMessage, res: ServerResponse) {
     const range = req.headers.range;
-    
+
     if (!range) return jsonResponse(res, 400, {error: 'Range header is required'});
 
     const videoPath = __dirname + '/video.mp4';
@@ -31,11 +31,20 @@ function video(req: IncomingMessage, res: ServerResponse) {
     };
     res.writeHead(206, headers);
 
-    if (videoCache[`${start}-${end}`])
+    const cacheKey = `${start}-${end}`;
+
+    if (videoCache[cacheKey])
         return res.end(videoCache[`${start}-${end}`]);
 
     const videoStream = createReadStream(videoPath, {start, end, autoClose: true});
-    videoStream.pipe(res);
+    const chunks: Buffer[] = [];
+
+    videoStream.on('data', (chunk) => chunks.push(chunk as Buffer));
+    videoStream.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        videoCache[cacheKey] = buffer;
+        res.end(buffer);
+    });
 
     return res;
 }
